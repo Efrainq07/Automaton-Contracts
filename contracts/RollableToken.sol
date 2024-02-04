@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import "witnet-solidity-bridge/contracts/interfaces/IWitnetRandomness.sol";
 
 abstract contract RollableToken is ERC721, Ownable {
     using ECDSA for bytes32;
@@ -22,6 +23,7 @@ abstract contract RollableToken is ERC721, Ownable {
     mapping (uint256=>uint256) public tokenRandomizingBlock;
     mapping (uint256=>bool) public isPopulated;
 
+    IWitnetRandomness immutable public witnet;
 
     constructor(
         string memory contractName,
@@ -29,11 +31,13 @@ abstract contract RollableToken is ERC721, Ownable {
         address litPKP_,
         string memory unpopulatedTokenURI_,
         uint256 cost_,
-        uint256 rerollCost_) ERC721(contractName, contractSymbol) {
+        uint256 rerollCost_,
+        IWitnetRandomness _witnetRandomness) ERC721(contractName, contractSymbol) {
         litPKP = litPKP_;
         unpopulatedTokenURI = unpopulatedTokenURI_;
         cost = cost_;
         rerollCost = rerollCost_;
+        witnet = _witnetRandomness;
     }
 
     function mint(address to) external payable returns (uint256 tokenId){
@@ -41,6 +45,7 @@ abstract contract RollableToken is ERC721, Ownable {
         _safeMint(to, next_token_id);
         setTokenURI(next_token_id, unpopulatedTokenURI);
         tokenRandomizingBlock[next_token_id] = block.number;
+        witnet.randomize{ value: msg.value }();
         next_token_id += 1;
         if(cost < msg.value){
             payable(msg.sender).transfer(msg.value - cost);
@@ -54,6 +59,7 @@ abstract contract RollableToken is ERC721, Ownable {
         require(rerollCost <= msg.value, "Insufficient payable value.");
         require(!isPopulated[tokenId], "Cannot reroll populated token.");
         tokenRandomizingBlock[next_token_id] = block.number;
+        witnet.randomize{ value: msg.value }();
         if(rerollCost < msg.value){
             payable(msg.sender).transfer(msg.value - rerollCost);
         }

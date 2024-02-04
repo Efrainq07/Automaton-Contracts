@@ -13,6 +13,7 @@
     "hardhat": "^2.19.5"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.1"
+    "@openzeppelin/contracts": "^5.0.1",
+    "witnet-solidity-bridge": "^0.6.1"
   }
 }
